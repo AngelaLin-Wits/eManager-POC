@@ -49,7 +49,7 @@
 .rds-pbi{border:1px solid #d8e2f1;border-radius:4px;background:#f8faff;padding:14px 14px 4px;margin:0 0 14px}
 .rds-hint{color:#667b9f;font-size:12px;margin:-8px 0 12px}.rds-req{color:#c33}
 .rds-link{display:flex;gap:8px;align-items:stretch;margin:0 0 6px}.rds-link code{flex:1;min-width:0;border:1px solid #d5e1f3;background:#fff;padding:8px 10px;overflow-wrap:anywhere;font-size:12px;color:#172a4c}
-#rds td.rds-tag{white-space:normal;overflow-wrap:anywhere;max-width:170px}#rds td:first-child{white-space:normal;min-width:200px}.rds-dim{opacity:.55}.rds-tag{font-family:monospace;font-size:12px}
+#rds td.rds-tag{white-space:normal;overflow-wrap:anywhere;max-width:170px}#rds td:first-child{white-space:normal;min-width:200px}.rds-dim{opacity:.55}.rds-sub{border:1px dashed #cbd9f0;border-radius:4px;padding:10px 12px 0;margin:0 0 12px;background:#fff}.rds-subt{font-weight:bold;margin:4px 0 8px;color:#1c386d}.rds-two{display:grid;grid-template-columns:1fr 2fr;gap:12px}.rds-two input{margin-bottom:6px!important}.rds-tag{font-family:monospace;font-size:12px}
 </style></head><body>
 <header><div>◩ <b>eManager</b></div><div class="rp-hright"><span class="viewAsSlot"></span><span>ⓔⓜ &nbsp; Backend Console</span></div></header>
 <aside><div class="back" id="backHome">Back to Home</div><div class="section">Quick Links</div><div class="nav">Sales by Region (Classic)</div><div class="nav">Sales by Region (Premium)</div><div class="section">Settings</div><div class="nav" data-page="Card Settings">Card Settings</div><div class="nav" data-page="Report Data Settings">Report Data Settings</div><div class="nav" data-page="Announcement Management">Announcement Management</div><div class="nav" data-page="Source Type Settings">Source Type Settings</div><div class="nav" data-page="Report Path Settings">Report Path Settings</div><div class="nav" data-page="KPI Settings">KPI Settings</div><div class="nav" data-page="Hierarchy Type Settings">Hierarchy Type Settings</div><div class="nav" data-page="Hierarchy Settings">Hierarchy Settings</div><div class="nav" data-page="Currency Settings">Currency Settings</div><div class="section">系統管理 Administration</div><div class="nav active" data-page="logs">Log Viewer</div><div class="nav" data-page="exports">Async Export Task Management</div><div class="nav" data-page="access">Report Access Approval</div><div class="nav" data-page="perm">Permission Management</div><div class="nav" data-page="roles">Role Management</div><div class="nav" data-page="deleg">Approval Delegation</div></aside>
@@ -693,9 +693,37 @@ function renderRds(){$('rdsRows').innerHTML=RDS.map(r=>{const pbi=r.type==='Powe
   });
  });
 }
+// Sample ScoreCard funcId ↔ Report No. mapping (replace with the real ScoreCard table once found)
+const FUNC_MAP=[
+ {funcId:'70E85C41-D041-40F8-A1B8-437FADF24E2E',no:'1292',title:'Financial Report RBU Online Analysis'},
+ {funcId:'813015B0-26BD-440E-B6EF-5D35B5BCC15D',no:'1292',title:'Financial Report RBU Online Analysis (2nd entry)'},
+ {funcId:'5C2A7E10-3B4D-4F61-9A0E-1D2C3B4A5F60',no:'1247',title:'Fulfillment KPI'}
+];
+function rdsResolve(c,pick){
+ // returns {no,funcId,err,info,choices}
+ const no=c.no,fid=c.funcId.toUpperCase(),res={no:'',funcId:'',err:'',info:'',choices:null};
+ if(no&&!/^\d+$/.test(no))return Object.assign(res,{err:'Report No. must be a positive integer.'});
+ if(fid&&!GUID_RE.test(fid))return Object.assign(res,{err:'Func ID must be a GUID (e.g. 70E85C41-D041-40F8-A1B8-437FADF24E2E).'});
+ if(!no&&!fid)return Object.assign(res,{err:'Enter Report No. or Func ID.'});
+ const byFid=fid?FUNC_MAP.find(m=>m.funcId===fid):null;
+ if(no&&byFid&&byFid.no!==no)return Object.assign(res,{err:'Func ID '+fid+' belongs to Report No. '+byFid.no+', not '+no+'.'});
+ if(c.linkBy==='FuncId'){ // Full Page needs a Func ID
+  if(fid){res.funcId=fid;res.no=no||(byFid?byFid.no:'');if(!no&&byFid)res.info='Report No. '+byFid.no+' found from Func ID.';if(!byFid)res.warn='Func ID not found in the ScoreCard mapping — click Open Test to confirm it opens the right report.';return res}
+  const list=FUNC_MAP.filter(m=>m.no===no);res.no=no;
+  if(!list.length)return Object.assign(res,{err:'No Full Page (Func ID) is set up in ScoreCard for Report No. '+no+'. Ask ScoreCard to create one, or choose Report Only.'});
+  if(list.length===1){res.funcId=list[0].funcId;res.info='Func ID found from Report No. '+no+'.';return res}
+  res.choices=list;const sel=list.find(m=>m.funcId===pick);
+  if(!sel)return Object.assign(res,{err:'Report No. '+no+' has '+list.length+' Func IDs in ScoreCard — select one.'});
+  res.funcId=sel.funcId;res.info='Func ID selected from '+list.length+' candidates for Report No. '+no+'.';return res}
+ // Report Only needs a Report No.
+ if(no){res.no=no;res.funcId=fid;return res}
+ if(!byFid)return Object.assign(res,{err:'Func ID '+fid+' is not found in the ScoreCard mapping, so Report No. cannot be found. Enter Report No.'});
+ res.no=byFid.no;res.funcId=fid;res.info='Report No. '+byFid.no+' found from Func ID.';return res;
+}
 function rdsDialog(id){
  const r=id?RDS.find(x=>x.id===id):null;
- const d=Object.assign({name:'',card:CATALOG[0].name,parent:'',owner:'',type:'Power BI Report',ws:Object.keys(PBI_WS)[0],pbi:'',no:'',funcId:'',linkBy:'ReportNo',remark:'',status:'Enabled'},r||{});
+ const d=Object.assign({name:'',card:CATALOG[0].name,parent:'',owner:'',type:'Power BI Report',ws:'',pbi:'',no:'',funcId:'',linkBy:'FuncId',remark:'',status:'Enabled'},r||{});
+ let pick=d.funcId||'';
  const opt=(arr,v)=>arr.map(x=>'<option'+(x===v?' selected':'')+'>'+esc(x)+'</option>').join('');
  const rad=(name,vals,v)=>'<div class="rds-radios">'+vals.map(([val,lab])=>'<label><input type="radio" name="'+name+'" value="'+val+'"'+(val===v?' checked':'')+'> '+lab+'</label>').join('')+'</div>';
  const body='<label class="rds-l">Report Name <span class="rds-req">*</span></label><input type="text" id="dName" maxlength="200" value="'+esc(d.name)+'">'
@@ -703,13 +731,19 @@ function rdsDialog(id){
  +'<label class="rds-l">Report Parent (Optional)</label><select id="dParent"></select>'
  +'<label class="rds-l">Report Owner (Optional)</label><input type="text" id="dOwner" value="'+esc(d.owner)+'">'
  +'<label class="rds-l">Report Type</label>'+rad('dType',[['Standard','Standard'],['Custom','Custom'],['Power BI Report','Power BI Report']],d.type)
- +'<div id="dPbi" class="rds-pbi">'+'<label class="rds-l">Display Mode</label>'+rad('dLink',[['FuncId','Full Page'],['ReportNo','Report Only']],d.linkBy)+'<div class="rds-hint"><b>Full Page</b>: shows the eManager header and report title (recommended). <b>Report Only</b>: shows the Power BI report without header; layout may shrink.</div>'
- +'<label class="rds-l">Work Space <span class="rds-req">*</span></label><select id="dWs">'+opt(Object.keys(PBI_WS),d.ws)+'</select>'
- +'<label class="rds-l">Report Name (Power BI) <span class="rds-req">*</span></label><select id="dPbiR"></select>'
- +'<label class="rds-l">Report No. <span class="rds-req">*</span></label><input type="text" id="dNo" value="'+esc(d.no)+'"><div class="rds-hint">Auto-filled from the selected Power BI report (= ACLPBI.dbo.Report.RowID); editable.</div>'
- +'<label class="rds-l">Func ID <span class="rds-req" id="dFuncReq">*</span></label><input type="text" id="dFunc" placeholder="e.g. 70E85C41-D041-40F8-A1B8-437FADF24E2E" value="'+esc(d.funcId)+'"><div class="rds-hint" id="dFuncHint"></div>'
- 
- +'<label class="rds-l">Generated Link</label><div class="rds-link"><code id="dUrl"></code><button class="rp-sm" id="dCopy">Copy</button><button class="rp-sm" id="dOpen">Open Test</button></div><div class="rds-hint" style="margin:0 0 10px" id="dUrlHint"></div>'
+ +'<div id="dPbi" class="rds-pbi">'
+ +'<label class="rds-l">Display Mode</label>'+rad('dLink',[['FuncId','Full Page'],['ReportNo','Report Only']],d.linkBy)
+ +'<div class="rds-hint" style="margin-top:-6px"><b>Full Page</b>: eManager header and report title (recommended). <b>Report Only</b>: Power BI report without header; layout may shrink.</div>'
+ +'<div class="rds-sub"><div class="rds-subt">Find Report No. (Optional)</div>'
+ +'<label class="rds-l">Work Space (Optional)</label><select id="dWs"><option value="">-- Select --</option>'+opt(Object.keys(PBI_WS),d.ws)+'</select>'
+ +'<label class="rds-l">Report Name (Optional)</label><select id="dPbiR"></select></div>'
+ +'<div class="rds-subt">Report No. or Func ID <span class="rds-req">*</span> <span class="muted" style="font-weight:normal">— enter one; the other is found automatically</span></div>'
+ +'<div class="rds-two"><div><label class="rds-l">Report No.</label><input type="text" id="dNo" value="'+esc(d.no)+'"></div>'
+ +'<div><label class="rds-l">Func ID</label><input type="text" id="dFunc" placeholder="e.g. 70E85C41-D041-40F8-A1B8-437FADF24E2E" value="'+esc(d.funcId)+'"></div></div>'
+ +'<div id="dPickWrap" class="hidden"><label class="rds-l">Select Func ID <span class="rds-req">*</span></label><select id="dPick"></select></div>'
+ +'<div id="dResolve" class="rds-hint" style="margin:0 0 12px"></div>'
+ +'<label class="rds-l">Generated Link</label><div class="rds-link"><code id="dUrl"></code><button class="rp-sm" id="dCopy">Copy</button><button class="rp-sm" id="dOpen">Open Test</button></div>'
+ +'<div class="rds-hint" style="margin:0 0 10px">Func ID ↔ Report No. lookup uses sample ScoreCard mapping data in this POC.</div>'
  +'</div><div id="dStd" class="notice">Standard / Custom report settings are not changed in this POC.</div>'
  +'<label class="rds-l">Remark (Optional)</label><textarea id="dRemark" rows="3">'+esc(d.remark)+'</textarea>'
  +'<label class="rds-l">Status</label><select id="dStatus">'+opt(['Enabled','Disabled'],d.status)+'</select>'
@@ -718,31 +752,32 @@ function rdsDialog(id){
  w.querySelector('.rp-dialog').classList.add('rds-dialog');
  const val=n=>(w.querySelector('input[name="'+n+'"]:checked')||{}).value;
  const fillParent=()=>{const c=CATALOG.find(x=>x.name===$('dCard').value);const ps=(c?c.reports:[]).filter(isCategory).map(x=>x.name);$('dParent').innerHTML='<option value="">-- None --</option>'+ps.map(x=>'<option'+(x===d.parent?' selected':'')+'>'+esc(x)+'</option>').join('')};
- const fillPbi=keep=>{const list=PBI_WS[$('dWs').value]||[];const cur=keep?d.pbi:'';$('dPbiR').innerHTML='<option value="">-- Select --</option>'+list.map(x=>'<option'+(x.name===cur?' selected':'')+'>'+esc(x.name)+'</option>').join('');if(!keep)$('dNo').value=''};
+ const fillPbi=keep=>{const list=PBI_WS[$('dWs').value]||[];const cur=keep?d.pbi:'';$('dPbiR').innerHTML='<option value="">-- Select --</option>'+list.map(x=>'<option'+(x.name===cur?' selected':'')+'>'+esc(x.name)+'</option>').join('')};
  const cur=()=>({type:val('dType'),linkBy:val('dLink'),no:$('dNo').value.trim(),funcId:$('dFunc').value.trim()});
- const refresh=()=>{const c=cur(),pbi=c.type==='Power BI Report';$('dPbi').classList.toggle('hidden',!pbi);$('dStd').classList.toggle('hidden',pbi);
-  const byF=c.linkBy==='FuncId';$('dFuncReq').classList.toggle('hidden',!byF);
-  $('dFuncHint').textContent=byF?'Required for Full Page. Opens PowerManager EmbeddedReport (eManager header and report title).':'Optional — only used when Display Mode = Full Page.';
-  $('dFunc').classList.toggle('rds-dim',!byF);
-  const url=rdsLink(c);$('dUrl').textContent=url||(byF?(c.funcId?'Func ID format is invalid':'Enter Func ID to generate the link'):'Select a Power BI report to generate the link');$('dCopy').disabled=$('dOpen').disabled=!url;
-  $('dUrlHint').textContent=url&&byF?'Func ID belongs to another system and cannot be verified here — click Open Test and confirm it shows the Power BI report selected above.':''};
+ let last={};
+ const refresh=()=>{const c=cur(),pbi=c.type==='Power BI Report';$('dPbi').classList.toggle('hidden',!pbi);$('dStd').classList.toggle('hidden',pbi);if(!pbi)return;
+  const res=rdsResolve(c,pick);last=res;
+  $('dPickWrap').classList.toggle('hidden',!res.choices);
+  if(res.choices)$('dPick').innerHTML='<option value="">-- Select --</option>'+res.choices.map(m=>'<option value="'+m.funcId+'"'+(m.funcId===pick?' selected':'')+'>'+esc(m.funcId+'  ('+m.title+')')+'</option>').join('');
+  $('dResolve').innerHTML=res.err?'<span class="failed">'+esc(res.err)+'</span>':res.warn?'<span style="color:#7a5200;font-weight:bold">⚠ '+esc(res.warn)+'</span>':res.info?'<span class="success">✓ '+esc(res.info)+'</span>':'';
+  const url=res.err?'':rdsLink({type:'Power BI Report',linkBy:c.linkBy,no:res.no,funcId:res.funcId});
+  $('dUrl').textContent=url||'—';$('dCopy').disabled=$('dOpen').disabled=!url};
  fillParent();fillPbi(true);refresh();
  $('dCard').onchange=()=>{d.parent='';fillParent()};
- $('dWs').onchange=()=>{fillPbi(false);refresh()};
- $('dPbiR').onchange=()=>{const x=(PBI_WS[$('dWs').value]||[]).find(y=>y.name===$('dPbiR').value);$('dNo').value=x?x.no:'';refresh()};
- $('dNo').oninput=$('dFunc').oninput=refresh;
+ $('dWs').onchange=()=>{fillPbi(false)};
+ $('dPbiR').onchange=()=>{const x=(PBI_WS[$('dWs').value]||[]).find(y=>y.name===$('dPbiR').value);if(x){$('dNo').value=x.no;pick=''}refresh()};
+ $('dNo').oninput=()=>{pick='';refresh()};$('dFunc').oninput=refresh;
+ $('dPick').onchange=()=>{pick=$('dPick').value;refresh()};
  w.querySelectorAll('input[name=dType],input[name=dLink]').forEach(i=>i.onchange=refresh);
  $('dCopy').onclick=()=>{const t=$('dUrl').textContent;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>notify('Link copied'),()=>notify('Copy failed — select the link and copy manually'))};
  $('dOpen').onclick=()=>window.open($('dUrl').textContent,'_blank','noopener');
  w.querySelector('[data-no]').onclick=()=>w.remove();
  w.querySelector('[data-ok]').onclick=()=>{const c=cur(),err=[];const name=$('dName').value.trim();if(!name)err.push('Enter Report Name.');
-  if(c.type==='Power BI Report'){if(!$('dPbiR').value)err.push('Select a Power BI report.');if(!/^\d+$/.test(c.no))err.push('Report No. must be a positive integer.');
-   if(c.funcId&&!GUID_RE.test(c.funcId))err.push('Func ID must be a GUID (e.g. 70E85C41-D041-40F8-A1B8-437FADF24E2E).');
-   if(c.linkBy==='FuncId'&&!c.funcId)err.push('Func ID is required when Display Mode = Full Page.')}
+  const pbi=c.type==='Power BI Report';if(pbi){refresh();if(last.err)err.push(last.err)}
   if(err.length){$('dErr').innerHTML=err.map(esc).join('<br>');$('dErr').classList.remove('hidden');return}
-  const pbi=c.type==='Power BI Report';const rec={name,card:$('dCard').value,parent:$('dParent').value,owner:$('dOwner').value.trim(),type:c.type,ws:pbi?$('dWs').value:'',pbi:pbi?$('dPbiR').value:'',no:pbi?c.no:'',funcId:pbi?c.funcId.toUpperCase():'',linkBy:pbi?c.linkBy:'ReportNo',remark:$('dRemark').value.trim(),status:$('dStatus').value};
+  const rec={name,card:$('dCard').value,parent:$('dParent').value,owner:$('dOwner').value.trim(),type:c.type,ws:pbi?$('dWs').value:'',pbi:pbi?$('dPbiR').value:'',no:pbi?last.no:'',funcId:pbi?last.funcId:'',linkBy:pbi?c.linkBy:'ReportNo',remark:$('dRemark').value.trim(),status:$('dStatus').value};
   let target=r;if(r)Object.assign(r,rec);else{target=Object.assign({id:'rd'+(++rdsSeq)},rec);RDS.push(target)}
-  audit(r?'ADMIN_UPDATE':'ADMIN_CREATE',{feature:'Report Data Settings',objectId:target.id,objectName:name,reportName:name,reportType:rec.type,linkBy:rec.linkBy,reportNo:rec.no,funcId:rec.funcId,targetUrl:rdsLink(target)},ADMIN);
+  audit(r?'ADMIN_UPDATE':'ADMIN_CREATE',{feature:'Report Data Settings',objectId:target.id,objectName:name,reportName:name,reportType:rec.type,displayMode:rec.linkBy==='FuncId'?'Full Page':'Report Only',reportNo:rec.no,funcId:rec.funcId,targetUrl:rdsLink(target)},ADMIN);
   w.remove();renderRds();notify('Report data saved')};
 }
 $('rdsCreate').onclick=()=>rdsDialog();
