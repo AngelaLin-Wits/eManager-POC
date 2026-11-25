@@ -55,22 +55,44 @@
 .pm-target-field{max-width:360px}
 .pm-target-field.hidden{display:none}
 .pm-target-field select{flex:1;min-width:0;width:100%}
+.log-filter-tools{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.log-filter-tools .actions{margin:0}
+.log-date-shortcuts{display:flex;flex-wrap:wrap;gap:6px}
+.log-advanced{margin-top:10px}
+.log-advanced .filters{margin-top:8px}
+.log-advanced summary,.log-action-picker summary{cursor:pointer}
+.log-action-picker{position:relative;min-width:0}
+.log-action-picker summary{border:1px solid #c9d5ed;border-radius:3px;padding:7px 9px;background:#fff}
+.log-action-options{position:absolute;top:100%;left:0;z-index:5;min-width:100%;width:max-content;max-width:min(320px,76vw);max-height:270px;overflow:auto;background:#fff;border:1px solid #c9d5ed;border-radius:4px;padding:8px;box-shadow:0 4px 12px #14284b26}
+.log-action-options label{display:flex;align-items:center;gap:6px;margin:4px 0;overflow-wrap:anywhere}
+.log-action-options input[type=checkbox]{width:auto}
+.log-action-options fieldset{border:0;margin:10px 0 0;padding:0}
+.log-action-options legend{font-weight:600}
 </style></head><body>
 <header><div>◩ <b>eManager</b></div><div class="rp-hright"><span class="viewAsSlot"></span><span>ⓔⓜ &nbsp; Backend Console</span></div></header>
 <aside><div class="back" id="backHome">Back to Home</div><div class="section">Quick Links</div><div class="nav">Sales by Region (Classic)</div><div class="nav">Sales by Region (Premium)</div><div class="section">Settings</div><div class="nav" data-page="Card Settings">Card Settings</div><div class="nav" data-page="Report Data Settings">Report Data Settings</div><div class="nav" data-page="Announcement Management">Announcement Management</div><div class="nav" data-page="Source Type Settings">Source Type Settings</div><div class="nav" data-page="Report Path Settings">Report Path Settings</div><div class="nav" data-page="KPI Settings">KPI Settings</div><div class="nav" data-page="Hierarchy Type Settings">Hierarchy Type Settings</div><div class="nav" data-page="Hierarchy Settings">Hierarchy Settings</div><div class="nav" data-page="Currency Settings">Currency Settings</div><div class="section">系統管理 Administration</div><div class="nav active" data-page="logs">Log Viewer</div><div class="nav" data-page="exports">Async Export Task Management</div><div class="nav hidden" data-page="access">Report Access Management</div><div class="nav" data-page="roles">Role Management</div><div class="nav" data-page="deleg">Approval Delegation</div></aside>
 <div id="consoleView"><main><h2 id="title">Log Viewer</h2><div class="notice">POC 模擬資料｜僅供介面測試；未連接正式 eManager 資料庫或排程服務。</div>
-<section id="logs"><div class="panel"><div class="notice"><strong>新版 eManager Operation Log</strong>｜VIEW_REPORT 長期保留；其他 Action Type 可個別設定保存天數（其他操作紀錄 1 年、系統紀錄 90 天為預設）。eManager 記錄 DOWNLOAD_REQUEST，實際下載由報表平台依 Task ID 串接。本頁不提供 Log 匯出。此 POC 使用模擬資料。</div><div class="filters">
+<section id="logs"><form id="logFilters" class="panel"><div class="notice"><strong>新版 eManager Operation Log</strong>｜VIEW_REPORT 長期保留；其他 Action Type 可個別設定保存天數（其他操作紀錄 1 年、系統紀錄 90 天為預設）。eManager 記錄 DOWNLOAD_REQUEST，實際下載由報表平台依 Task ID 串接。本頁不提供 Log 匯出。此 POC 使用模擬資料。</div><div class="filters">
 <div class="field"><label>AD Account（實際操作者）</label><input id="luser" placeholder="WITS\\user"></div>
-<div class="field"><label>Simulated AD</label><input id="lsimulated" placeholder="WITS\\user"></div>
 <div class="field"><label>Start Date (UTC+8)</label><input type="date" id="lstart"></div>
 <div class="field"><label>End Date (UTC+8)</label><input type="date" id="lend"></div>
 <div class="field"><label>Functional Area</label><select id="lmodule"><option value="">All Areas</option><option>Login</option><option>Report</option><option>Simulation</option><option>Permission</option><option>Role</option><option>Delegation</option><option>Administration</option></select></div>
-<div class="field"><label>Action Type</label><select id="laction"><option value="">All Actions</option><option>VIEW_REPORT</option><option>SIMULATE_START</option><option>SIMULATE_END</option><option>DOWNLOAD_REQUEST</option><option>QUERY</option><option>CLICK_LINK</option><option>ADMIN_CREATE</option><option>ADMIN_UPDATE</option><option>ADMIN_DELETE</option></select></div>
-<div class="field"><label>IP Address</label><input id="lip" placeholder="IP address"></div>
+<div class="field"><label id="lactionLabel">Action Type</label><details id="laction" class="log-action-picker"><summary aria-labelledby="lactionLabel lactionSummary"><span id="lactionSummary">All Actions</span></summary><div id="lactionOptions" class="log-action-options"></div></details></div>
 <div class="field"><label>Target</label><input id="lreport" placeholder="Report, request, role or account"></div>
 <div class="field"><label>Result</label><select id="lresult"><option value="">All Results</option><option>Success</option><option>Failed</option></select></div>
 <div class="field"><label>Summary</label><input id="lsummary" placeholder="Search summary"></div>
-</div><div class="actions"><button id="lreset">Reset</button><button class="primary" id="lsearch">Search</button></div></div>
+</div>
+<div class="log-filter-tools">
+ <div class="log-date-shortcuts" role="group" aria-label="Date range shortcuts">
+  <button type="button" data-log-days="1">Today</button><button type="button" data-log-days="7">Last 7 Days</button><button type="button" data-log-days="30">Last 30 Days</button>
+ </div>
+ <div class="actions"><button type="button" id="lreset">Reset</button><button type="submit" class="primary" id="lsearch">Search</button></div>
+</div>
+<details id="logAdvanced" class="log-advanced"><summary>Advanced Filters</summary><div class="filters">
+<div class="field"><label for="lip">IP Address</label><input id="lip" placeholder="IP address"></div>
+<div class="field"><label for="lsimulated">Simulated AD</label><input id="lsimulated" placeholder="WITS\\user"></div>
+</div></details>
+</form>
 
 <div class="table-wrap"><table><thead><tr><th>Operation Time (UTC+8)</th><th>Operator AD</th><th>Functional Area</th><th>Action Type</th><th>Target</th><th>Summary</th><th>Result</th></tr></thead><tbody id="lrows"></tbody></table></div><div class="foot"><span id="lcount"></span><span id="lpager"></span></div></section>
 <section id="exports" class="hidden"><div class="panel"><div class="notice"><strong>Retry（失敗任務重試）：待需求確認</strong>｜原需求畫面有「重試」按鈕，但尚未定義重試規則。目前「建立新 Task ID、保留原失敗紀錄、以 Retry From 關聯」僅為 POC 建議方案，非已定案規格；不會執行正式匯出。</div><div class="filters">
@@ -137,10 +159,11 @@ function bindLogRows(host){
 function renderLogs(filter=true){
  if(filter){
   const matches=(field,value)=>String(value??'').toLowerCase().includes($(field).value.trim().toLowerCase());
+  const selectedActions=new Set(selectedLogActions());
   ls=logs.filter(x=>{
    const p=x.params||{}, date=x.date.slice(0,10);
    return date>=$('lstart').value&&date<=$('lend').value&&matches('luser',x.user)&&matches('lsimulated',x.simulated)&&matches('lip',x.ip)&&
-    (!$('lmodule').value||x.module===$('lmodule').value)&&(!$('laction').value||x.action===$('laction').value)&&
+    (!$('lmodule').value||x.module===$('lmodule').value)&&(!selectedActions.size||selectedActions.has(x.action))&&
     (!$('lresult').value||x.result===$('lresult').value)&&matches('lsummary',logSummary(x))&&
     [logTarget(x),logReportId(x),p.targetReportId,p.requestId,p.roleName,p.roleId,p.targetUser,p.target,p.applicant,p.delegationId,p.owner,p.delegate].some(value=>matches('lreport',value));
   });
@@ -197,7 +220,20 @@ function nextExportId(){
 }
 function retryTask(id){const original=exportsData.find(r=>r.id===id);if(!original||original.status!=='Failed')return;if(!confirm('Retry 流程尚待需求確認。\n是否試用 POC 建議方案，重試失敗任務 '+id+'？\n將建立新的 Queued 任務、保留原失敗紀錄並記錄 Retry From；不會執行正式匯出。'))return;const newId=nextExportId();exportsData.push({id:newId,date:tzTime(0),user:original.user,report:original.report,type:original.type,module:original.module,status:'Queued',progress:0,recordCount:null,completed:'',retryFrom:original.id});$('estatus').value='';renderExports();notify('已模擬建立重試任務 '+newId+'（來源 '+id+'）；未執行正式匯出')}
 function cancelTask(id){const x=exportsData.find(r=>r.id===id);if(!x||!['Queued','Processing'].includes(x.status))return;if(!confirm('確定取消任務 '+id+'？\nPOC 僅模擬取消，不會影響正式任務。'))return;x.status='Cancelled';x.completed=new Date().toISOString().slice(0,19).replace('T',' ');/* Export task actions are managed separately by the shared reporting platform; no eManager DOWNLOAD log. */renderExports();notify('任務 '+id+' 已模擬取消')}
-$('lsearch').onclick=()=>{if(dateValid($('lstart').value,$('lend').value,31))renderLogs()};$('esearch').onclick=()=>{if(dateValid($('estart').value,$('eend').value,31))renderExports()};$('lreset').onclick=()=>{['luser','lsimulated','lmodule','laction','lip','lreport','lresult','lsummary'].forEach(id=>$(id).value='');$('lstart').value=ago(6);$('lend').value=today;renderLogs()};$('ereset').onclick=()=>{['estatus','euser','ereport','etype','emodule'].forEach(id=>$(id).value='');$('estart').value=ago(6);$('eend').value=today;renderExports()};$('lreset').click();$('ereset').click();
+$('logFilters').onsubmit=event=>{
+ event.preventDefault();
+ if(!dateValid($('lstart').value,$('lend').value,31))return;
+ $('laction').open=false;
+ renderLogs();
+};
+function setLogDateRange(days){
+ const end=new Date(Date.now()+8*3600000);
+ $('lend').value=end.toISOString().slice(0,10);
+ end.setUTCDate(end.getUTCDate()-days+1);
+ $('lstart').value=end.toISOString().slice(0,10);
+}
+$('logFilters').querySelectorAll('[data-log-days]').forEach(button=>button.onclick=()=>setLogDateRange(Number(button.dataset.logDays)));
+$('esearch').onclick=()=>{if(dateValid($('estart').value,$('eend').value,31))renderExports()};$('lreset').onclick=()=>{['luser','lsimulated','lmodule','lip','lreport','lresult','lsummary'].forEach(id=>$(id).value='');$('lactionOptions').querySelectorAll('input:checked').forEach(input=>input.checked=false);$('laction').open=false;$('logAdvanced').open=false;setLogDateRange(7);renderLogs()};$('ereset').onclick=()=>{['estatus','euser','ereport','etype','emodule'].forEach(id=>$(id).value='');$('estart').value=ago(6);$('eend').value=today;renderExports()};$('lreset').click();$('ereset').click();
 
 
 
@@ -281,14 +317,28 @@ function audit(action,params,user){
 const ACTION_GROUPS={"Login":["LOGIN","LOGIN_FAILED","ACCESS_DENIED"],"Report":["VIEW_REPORT","QUERY","CLICK_LINK","DOWNLOAD_REQUEST"],"Simulation":["SIMULATE_START","SIMULATE_END"],"Permission":["ACCESS_REQUEST_SUBMIT","ACCESS_REQUEST_WITHDRAW","ACCESS_APPROVE","ACCESS_REJECT","ACCESS_GRANT","ACCESS_REMOVE_PERSONAL","ROLE_REPORT_EXCLUDE","PERMISSION_GRANT_USER","PERMISSION_REVOKE_USER","PERMISSION_GRANT_ROLE","PERMISSION_REVOKE_ROLE","PERMISSION_DEDUPE"],"Role":["ROLE_CREATE","ROLE_UPDATE","ROLE_DELETE","ROLE_MEMBER_ADD","ROLE_MEMBER_REMOVE","ROLE_SYNC"],"Delegation":["DELEGATION_CREATE","DELEGATION_UPDATE","DELEGATION_CANCEL"],"Administration":["ADMIN_CREATE","ADMIN_UPDATE","ADMIN_DELETE"]};
 const ACTION_AREA=Object.fromEntries(Object.entries(ACTION_GROUPS).flatMap(([area,actions])=>actions.map(action=>[action,area])));
 const ACTION_TYPES=Object.values(ACTION_GROUPS).flat();
-function refreshActionOptions(){
- const area=$('lmodule').value, select=$('laction'), previous=select.value;
- const groups=Object.entries(ACTION_GROUPS).filter(([name])=>!area||name===area);
- const actions=groups.flatMap(([,values])=>values);
- select.innerHTML='<option value="">All Actions ('+actions.length+')</option>'+groups.map(([name,values])=>
-  '<optgroup label="'+name+'">'+values.map(action=>'<option>'+action+'</option>').join('')+'</optgroup>').join('');
- select.value=actions.includes(previous)?previous:'';
+function selectedLogActions(){
+ return Array.from($('lactionOptions').querySelectorAll('input:checked'),input=>input.value);
 }
+function updateActionSummary(){
+ const count=selectedLogActions().length;
+ const available=$('lactionOptions').querySelectorAll('input').length;
+ $('lactionSummary').textContent=count?count+' selected':'All Actions ('+available+')';
+}
+function refreshActionOptions(){
+ const area=$('lmodule').value;
+ const selected=new Set(selectedLogActions());
+ const groups=Object.entries(ACTION_GROUPS).filter(([name])=>!area||name===area);
+ $('lactionOptions').innerHTML='<button type="button" id="clearLogActions">Clear Selection</button>'+groups.map(([name,actions])=>
+  '<fieldset><legend>'+esc(name)+'</legend>'+actions.map(action=>
+   '<label><input type="checkbox" value="'+esc(action)+'"'+(selected.has(action)?' checked':'')+'>'+esc(action)+'</label>').join('')+'</fieldset>').join('');
+ $('clearLogActions').onclick=()=>{
+  $('lactionOptions').querySelectorAll('input:checked').forEach(input=>input.checked=false);
+  updateActionSummary();
+ };
+ updateActionSummary();
+}
+$('lactionOptions').onchange=updateActionSummary;
 $('lmodule').onchange=refreshActionOptions;
 $('lreset').addEventListener('click',refreshActionOptions);
 refreshActionOptions();
